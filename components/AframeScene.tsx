@@ -16,8 +16,8 @@ function registerClickAction() {
 
   AFRAME.registerComponent("click-action", {
     schema: {
-      defaultColor: { type: "color", default: "#4c6edb" },
-      hoverColor: { type: "color", default: "#6f85e4" }
+      defaultColor: { type: "color", default: "#ffffff" },
+      hoverColor: { type: "color", default: "#ffffff" }
     },
 
     init: function () {
@@ -41,7 +41,8 @@ function registerClickAction() {
     },
 
     handleEnter: function () {
-      this.el.setAttribute("material", "color", this.data.hoverColor);
+      // Keep original color to avoid tinting textures.
+      this.el.setAttribute("material", "color", this.baseColor);
     },
 
     handleLeave: function () {
@@ -201,6 +202,24 @@ export function AframeScene() {
                       animation__hover="property: scale; to: 1.05 1.05 1; startEvents: mouseenter; dur: 150; easing: easeOutQuad"
                       animation__leave="property: scale; to: 1 1 1; startEvents: mouseleave; dur: 150; easing: easeOutQuad"
                     ></a-image>
+                    <a-text
+                      value={video.title}
+                      align="left"
+                      color="#f5f5f5"
+                      width="3"
+                      position="-0.45 -0.36 0.01"
+                      font="https://cdn.aframe.io/fonts/Exo2SemiBold.fnt"
+                      scale="0.6 0.6 0.6"
+                    ></a-text>
+                    <a-text
+                      value={video.duration}
+                      align="left"
+                      color="#c8ccd4"
+                      width="3"
+                      position="-0.45 -0.45 0.01"
+                      font="https://cdn.aframe.io/fonts/Exo2SemiBold.fnt"
+                      scale="0.5 0.5 0.5"
+                    ></a-text>
                   </a-entity>
                 );
               })}
