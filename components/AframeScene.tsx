@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { channels, favorites, history, videos } from "@/data/videos";
 import { registerRounded } from "@/lib/register-rounded";
 
@@ -70,32 +71,10 @@ export function AframeScene() {
   const [ready, setReady] = useState(false);
   const [activeTab, setActiveTab] = useState<"favorites" | "history">("favorites");
   const [selectedChannel, setSelectedChannel] = useState<string>( channels[0]?.id ?? "" );
-  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
-
-  const pauseVideo = (videoId: string | null) => {
-    if (!videoId) return;
-    const videoEl = document.getElementById(`video-${videoId}`) as HTMLVideoElement | null;
-    if (!videoEl) return;
-    videoEl.pause();
-    videoEl.currentTime = 0;
-  };
-
-  const playVideo = (videoId: string) => {
-    const videoEl = document.getElementById(`video-${videoId}`) as HTMLVideoElement | null;
-    if (!videoEl) return;
-    videoEl.currentTime = 0;
-    videoEl.play().catch(() => {});
-  };
+  const router = useRouter();
 
   const handlePlayVideo = (videoId: string) => {
-    if (activeVideoId && activeVideoId !== videoId) pauseVideo(activeVideoId);
-    setActiveVideoId(videoId);
-    requestAnimationFrame(() => playVideo(videoId));
-  };
-
-  const handleCloseVideo = () => {
-    pauseVideo(activeVideoId);
-    setActiveVideoId(null);
+    router.push(`/video/${videoId}`);
   };
 
   useEffect(() => {
@@ -123,17 +102,6 @@ export function AframeScene() {
             <a-assets>
               {videos.map((video) => (
                 <img key={video.id} id={`thumb-${video.id}`} src={video.thumbnail} />
-              ))}
-              {videos.map((video) => (
-                <video
-                  key={`video-${video.id}`}
-                  id={`video-${video.id}`}
-                  src={video.videoUrl}
-                  crossOrigin="anonymous"
-                  preload="auto"
-                  playsInline
-                  webkit-playsinline="true"
-                ></video>
               ))}
               <img id="channel-arrow-right" src="/icons/right-arrow.png" />
               {channels.flatMap((channel) => {
@@ -355,48 +323,8 @@ export function AframeScene() {
                     <a-animation attribute="scale" to="1.05 1.05 1.05" dur="200" begin="mouseenter" fill="forwards" ></a-animation>
                     <a-animation attribute="scale" to="1 1 1" dur="200" begin="mouseleave" fill="forwards" ></a-animation>
                   </a-entity>
-                ))}
+                ))}            
             </a-entity>
-
-            {activeVideoId && (
-              <a-entity id="video-player" position="0 1.6 -2.2">
-                <a-rounded
-                  width="3.4"
-                  height="2"
-                  radius="0.08"
-                  color="#0f1114"
-                  material="shader: flat; opacity: 0.9"
-                ></a-rounded>
-                <a-video
-                  src={`#video-${activeVideoId}`}
-                  width="3.2"
-                  height="1.8"
-                  position="0 0 0.05"
-                  autoplay="true"
-                  loop="true"
-                  playsinline="true"
-                ></a-video>
-                <a-entity position="1.6 0.9 0.06">
-                  <a-rounded
-                    class="clickable"
-                    width="0.2"
-                    height="0.2"
-                    radius="0.04"
-                    color="#30343a"
-                    material="shader: flat; opacity: 0.9; transparent: true"
-                    onClick={handleCloseVideo}
-                  ></a-rounded>
-                  <a-text
-                    value="X"
-                    align="center"
-                    position="0 0 0.01"
-                    color="#ffffff"
-                    width="1"
-                    scale="0.5 0.5 0.5"
-                  ></a-text>
-                </a-entity>
-              </a-entity>
-            )}
 
           </a-scene>
         ) : (
