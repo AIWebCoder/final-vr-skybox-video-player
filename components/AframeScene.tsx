@@ -63,9 +63,34 @@ function registerClickAction() {
 export function AframeScene() {
   const [ready, setReady] = useState(false);
   const [activeTab, setActiveTab] = useState<"favorites" | "history">("favorites");
-  const [selectedChannel, setSelectedChannel] = useState<string>(
-    channels[0]?.id ?? ""
-  );
+  const [selectedChannel, setSelectedChannel] = useState<string>( channels[0]?.id ?? "" );
+  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
+
+  const pauseVideo = (videoId: string | null) => {
+    if (!videoId) return;
+    const videoEl = document.getElementById(`video-${videoId}`) as HTMLVideoElement | null;
+    if (!videoEl) return;
+    videoEl.pause();
+    videoEl.currentTime = 0;
+  };
+
+  const playVideo = (videoId: string) => {
+    const videoEl = document.getElementById(`video-${videoId}`) as HTMLVideoElement | null;
+    if (!videoEl) return;
+    videoEl.currentTime = 0;
+    videoEl.play().catch(() => {});
+  };
+
+  const handlePlayVideo = (videoId: string) => {
+    if (activeVideoId && activeVideoId !== videoId) pauseVideo(activeVideoId);
+    setActiveVideoId(videoId);
+    requestAnimationFrame(() => playVideo(videoId));
+  };
+
+  const handleCloseVideo = () => {
+    pauseVideo(activeVideoId);
+    setActiveVideoId(null);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -93,9 +118,29 @@ export function AframeScene() {
               {videos.map((video) => (
                 <img key={video.id} id={`thumb-${video.id}`} src={video.thumbnail} />
               ))}
-              {channels.map((channel) => (
-                <img key={channel.id} id={`channel-icon-${channel.id}`} src={channel.icon} />
+              {videos.map((video) => (
+                <video
+                  key={`video-${video.id}`}
+                  id={`video-${video.id}`}
+                  src={video.videoUrl}
+                  crossOrigin="anonymous"
+                  preload="auto"
+                  playsInline
+                  webkit-playsinline="true"
+                ></video>
               ))}
+              <img id="channel-arrow-right" src="/icons/right-arrow.png" />
+              {channels.flatMap((channel) => {
+                const assets = [
+                  <img key={`channel-icon-${channel.id}-inactive`} id={`channel-icon-${channel.id}-inactive`} src={channel.icon} />
+                ];
+                if (channel.iconActive) {
+                  assets.push(
+                    <img key={`channel-icon-${channel.id}-active`} id={`channel-icon-${channel.id}-active`} src={channel.iconActive} />
+                  );
+                }
+                return assets;
+              })}
             </a-assets>
 
             <a-entity id="light-ambient" light="type: ambient; color: #dfe4eb"></a-entity>
@@ -114,7 +159,6 @@ export function AframeScene() {
                 <a-entity id="mouse-cursor" cursor="rayOrigin: mouse; fuse: false" raycaster="objects: .clickable; far: 20" visible="false" ></a-entity>
               </a-entity>
             </a-entity>
-
             <a-entity laser-controls="hand: right" raycaster="objects: .clickable; far: 20" line="color: #cfd8e6; opacity: 0.7" ></a-entity>
 
             {/* Left Panel - Channels */}
@@ -132,33 +176,29 @@ export function AframeScene() {
                     setSelectedChannel(channel.id);
                   }}
                 >
-                  <a-plane
-                    width="1.15"
-                    height="0.35"
-                    color={selectedChannel === channel.id ? "#3a3c3f" : "transparent"}
-                    opacity={selectedChannel === channel.id ? 0.8 : 0}
-                    material="shader: flat; transparent: true;"
-                    position="0 0 0"
-                  ></a-plane>
-                  {selectedChannel === channel.id && (
-                    <a-box
-                      width="0.05"
-                      height="0.35"
-                      depth="0.01"
-                      color="#FFD700"
-                      position="-0.55 0 0.02"
-                    ></a-box>
-                  )}
-                  <a-image src={`#channel-icon-${channel.id}`} width="0.2" height="0.2" position="-0.4 0 0.01" ></a-image>
+                  <a-image
+                    src={`#channel-icon-${channel.id}-${selectedChannel === channel.id && channel.iconActive ? "active" : "inactive"}`}
+                    width="0.24"
+                    height="0.24"
+                    position="-0.5 0 0.01"
+                    material="shader: flat; transparent: true"
+                  ></a-image>
                   <a-text
                     value={channel.label}
-                    color={selectedChannel === channel.id ? "#FFD700" : "#ffffff"}
+                    color={selectedChannel === channel.id ? "#FEE49F" : "#ffffff"}
                     align="left"
-                    position="-0.15 0 0.01"
+                    position="-0.25 0 0.01"
                     width="3"
-                    font="https://cdn.aframe.io/fonts/Exo2SemiBold.fnt"
+                    font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
                     scale="0.8 0.8 0.8"
                   ></a-text>
+                  <a-image
+                    src="#channel-arrow-right"
+                    width="0.12"
+                    height="0.12"
+                    position="0.55 0 0.01"
+                    material={`shader: flat; transparent: true; color: ${selectedChannel === channel.id ? "#FEE49F" : "#ffffff"}`}
+                  ></a-image>
                   <a-animation attribute="scale" to="1.05 1.05 1.05" dur="200" begin="mouseenter" fill="forwards" />
                   <a-animation attribute="scale" to="1 1 1" dur="200" begin="mouseleave" fill="forwards" />
                   <a-animation attribute="position" to="0 0.8 0.01" dur="200" begin="mouseenter" fill="forwards" />
@@ -189,26 +229,33 @@ export function AframeScene() {
                 const itemWidth = 0.8;
                 const itemHeight = 0.45;
                 return (
-                  <a-entity key={video.id} id={`thumb-wrap-${video.id}`} position={`${x} ${y} 0.02`} >
-                    <a-image
+                  <a-entity
+                    key={video.id}
+                    id={`thumb-wrap-${video.id}`}
+                    position={`${x} ${y} 0.02`}
+                    class="clickable"
+                    onClick={() => handlePlayVideo(video.id)}
+                  >
+                    <a-rounded
                       id={`thumb-img-${video.id}`}
                       class="clickable"
-                      src={`#thumb-${video.id}`}
                       width={video.width ?? itemWidth}
                       height={video.height ?? itemHeight}
+                      radius="0.04"
                       position="0 0 0"
-                      shader="flat"
+                      src={`#thumb-${video.id}`}
+                      material="shader: flat; transparent: true; side: double"
                       click-action
                       animation__hover="property: scale; to: 1.05 1.05 1; startEvents: mouseenter; dur: 150; easing: easeOutQuad"
                       animation__leave="property: scale; to: 1 1 1; startEvents: mouseleave; dur: 150; easing: easeOutQuad"
-                    ></a-image>
+                    ></a-rounded>
                     <a-text
                       value={video.title}
                       align="left"
                       color="#f5f5f5"
                       width="3"
-                      position="-0.45 -0.36 0.01"
-                      font="https://cdn.aframe.io/fonts/Exo2SemiBold.fnt"
+                      position="-0.45 -0.4 0.01"
+                      font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
                       scale="0.6 0.6 0.6"
                     ></a-text>
                     <a-text
@@ -216,8 +263,8 @@ export function AframeScene() {
                       align="left"
                       color="#c8ccd4"
                       width="3"
-                      position="-0.45 -0.45 0.01"
-                      font="https://cdn.aframe.io/fonts/Exo2SemiBold.fnt"
+                      position="-0.45 -0.52 0.01"
+                      font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
                       scale="0.5 0.5 0.5"
                     ></a-text>
                   </a-entity>
@@ -226,7 +273,7 @@ export function AframeScene() {
             </a-entity>
 
             {/* Right Panel - Favorites & History */}
-            <a-entity id="right-panel" position="3 1.5 -3" rotation="0 -10 0" animation__float="property: position; to: 3 1.6 -3; dur: 3000; easing: easeInOutSine; loop: true; dir: alternate" >
+            <a-entity id="right-panel" position="3 1.5 -3" rotation="0 -20 0" animation__float="property: position; to: 3 1.6 -3; dur: 3000; easing: easeInOutSine; loop: true; dir: alternate" >
               <a-rounded
                 id="right-panel-bg"
                 width="1.5"
@@ -236,15 +283,15 @@ export function AframeScene() {
                 material="shader: flat"
               ></a-rounded>
 
-              <a-entity position="0 1 0.01">
+              <a-entity position="0 1 0.02">
                 <a-text
                   id="tab-favorites"
                   value="Favorites"
-                  color={activeTab === "favorites" ? "#FFD700" : "#888888"}
+                  color={activeTab === "favorites" ? "#FEE49F" : "#888888"}
                   align="center"
                   position="-0.3 0 0.01"
                   width="3"
-                  font="https://cdn.aframe.io/fonts/Exo2SemiBold.fnt"
+                  font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
                   scale="0.7 0.7 0.7"
                   class="clickable"
                   onClick={() => setActiveTab("favorites")}
@@ -252,11 +299,11 @@ export function AframeScene() {
                 <a-text
                   id="tab-history"
                   value="History"
-                  color={activeTab === "history" ? "#FFD700" : "#888888"}
+                  color={activeTab === "history" ? "#FEE49F" : "#888888"}
                   align="center"
                   position="0.3 0 0.01"
                   width="3"
-                  font="https://cdn.aframe.io/fonts/Exo2SemiBold.fnt"
+                  font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
                   scale="0.7 0.7 0.7"
                   class="clickable"
                   onClick={() => setActiveTab("history")}
@@ -269,31 +316,34 @@ export function AframeScene() {
                   <a-entity
                     key={item.id}
                     id={`${activeTab}-${item.id}`}
-                    position={`0 ${0.5 - index * 0.35} 0.01`}
+                    position={`0 ${0.5 - index * 0.35} 0.03`}
                     class="clickable"
+                    onClick={() => handlePlayVideo(item.id)}
                   >
-                    <a-image
-                      src={`#thumb-${item.id}`}
+                    <a-rounded
                       width="0.25"
                       height="0.15"
-                      position="-0.55 0 0.01"
-                    ></a-image>
+                      radius="0.02"
+                      position="-0.5 0 0.04"
+                      src={`#thumb-${item.id}`}
+                      material="shader: flat; transparent: true; side: double"
+                    ></a-rounded>
                     <a-text
                       value={item.title}
                       color="#ffffff"
                       align="left"
-                      position="-0.25 0.05 0.01"
+                      position="-0.26 0.05 0.01"
                       width="4"
-                      font="https://cdn.aframe.io/fonts/Exo2SemiBold.fnt"
+                      font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
                       scale="0.5 0.5 0.5"
                     ></a-text>
                     <a-text
                       value={item.duration}
                       color="#888888"
                       align="left"
-                      position="-0.25 -0.05 0.01"
+                      position="-0.26 -0.05 0.01"
                       width="4"
-                      font="https://cdn.aframe.io/fonts/Exo2SemiBold.fnt"
+                      font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
                       scale="0.4 0.4 0.4"
                     ></a-text>
                     <a-animation attribute="scale" to="1.05 1.05 1.05" dur="200" begin="mouseenter" fill="forwards" ></a-animation>
@@ -301,7 +351,47 @@ export function AframeScene() {
                   </a-entity>
                 ))}
             </a-entity>
-            
+
+            {activeVideoId && (
+              <a-entity id="video-player" position="0 1.6 -2.2">
+                <a-rounded
+                  width="3.4"
+                  height="2"
+                  radius="0.08"
+                  color="#0f1114"
+                  material="shader: flat; opacity: 0.9"
+                ></a-rounded>
+                <a-video
+                  src={`#video-${activeVideoId}`}
+                  width="3.2"
+                  height="1.8"
+                  position="0 0 0.05"
+                  autoplay="true"
+                  loop="true"
+                  playsinline="true"
+                ></a-video>
+                <a-entity position="1.6 0.9 0.06">
+                  <a-rounded
+                    class="clickable"
+                    width="0.2"
+                    height="0.2"
+                    radius="0.04"
+                    color="#30343a"
+                    material="shader: flat; opacity: 0.9; transparent: true"
+                    onClick={handleCloseVideo}
+                  ></a-rounded>
+                  <a-text
+                    value="X"
+                    align="center"
+                    position="0 0 0.01"
+                    color="#ffffff"
+                    width="1"
+                    scale="0.5 0.5 0.5"
+                  ></a-text>
+                </a-entity>
+              </a-entity>
+            )}
+
           </a-scene>
         ) : (
           <div className="loading">Chargement de la scène...</div>

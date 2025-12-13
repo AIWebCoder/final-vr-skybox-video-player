@@ -23,6 +23,7 @@ export interface ChannelItem {
   id: string;
   label: string;
   icon: string;
+  iconActive?: string;
 }
 
 export interface FavoriteItem {

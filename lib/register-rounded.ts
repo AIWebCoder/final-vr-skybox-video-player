@@ -37,6 +37,25 @@ export function registerRounded() {
       shape.quadraticCurveTo(-width / 2, -height / 2, -width / 2 + r, -height / 2);
 
       const geometry = new THREE.ShapeGeometry(shape);
+      geometry.computeBoundingBox();
+
+      const min = geometry.boundingBox?.min ?? new THREE.Vector3(0, 0, 0);
+      const max = geometry.boundingBox?.max ?? new THREE.Vector3(1, 1, 0);
+      const range = new THREE.Vector2(
+        Math.max(max.x - min.x, 0.0001),
+        Math.max(max.y - min.y, 0.0001)
+      );
+
+      const posAttr = geometry.attributes.position;
+      const uvs: number[] = [];
+      for (let i = 0; i < posAttr.count; i++) {
+        const x = posAttr.getX(i);
+        const y = posAttr.getY(i);
+        uvs.push((x - min.x) / range.x, (y - min.y) / range.y);
+      }
+      geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+      geometry.attributes.uv.needsUpdate = true;
+      geometry.computeVertexNormals();
 
       const mesh = el.getObject3D("mesh");
       if (mesh) mesh.geometry = geometry;
@@ -55,7 +74,8 @@ export function registerRounded() {
       height: "geometry.height",
       radius: "rounded.radius",
       color: "material.color",
-      opacity: "material.opacity"
+      opacity: "material.opacity",
+      src: "material.src"
     }
   });
 }
