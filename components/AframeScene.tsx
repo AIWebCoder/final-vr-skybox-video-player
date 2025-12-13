@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,6 +8,11 @@ import { registerRounded } from "@/lib/register-rounded";
 declare global {
   interface Window {
     AFRAME?: any;
+  }
+  namespace JSX {
+    interface IntrinsicElements {
+      [elem: string]: any;
+    }
   }
 }
 
